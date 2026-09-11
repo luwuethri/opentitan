@@ -68,3 +68,7 @@ targets:
         mode: lint-only
         verilator_options:
           - "-Wall"
+      slang:
+        slang_options:
+          - "--ignore-unknown-modules"
+          - "--error-limit 0"

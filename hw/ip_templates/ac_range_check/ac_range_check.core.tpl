@@ -71,3 +71,7 @@ targets:
         verilator_options:
           - '-Wall'
           - '-Wno-ALWCOMBORDER'
+      slang:
+        slang_options:
+          - "--ignore-unknown-modules"
+          - "--error-limit 0"

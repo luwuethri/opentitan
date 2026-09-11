@@ -129,6 +129,11 @@ targets:
         mode: lint-only
         verilator_options:
           - "-Wall"
+      slang:
+        slang_options:
+          - "--ignore-unknown-modules"
+          - "--timescale 1ns/1ps"
+          - "--error-limit 0"
 
   sim:
     <<: *default_target
