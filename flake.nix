@@ -36,6 +36,9 @@
 
     # Provides mkEdaShell (the EDA devshell builder)
     lowrisc-nix.url = "github:lowRISC/lowrisc-nix";
+
+    # LibreLane: open-source ASIC physical design flow (OpenROAD, OpenSTA, ...)
+    librelane.url = "path:/home/ljw/Documents/FullOpenSourceFlow/librelane";
   };
 
   nixConfig = {
@@ -50,6 +53,7 @@
     uv2nix,
     pyproject-build-systems,
     lowrisc-nix,
+    librelane,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (system: let
@@ -78,6 +82,9 @@
       pythonEnv = pythonSet.mkVirtualEnv "opentitan-env" workspace.deps.default;
 
       lrPkgs = lowrisc-nix.packages.${system};
+      # legacyPackages is the full nixpkgs instantiation with nix-eda's overlay
+      # applied; librelane.packages only re-exports openroad/opensta/etc.
+      llPkgs = librelane.legacyPackages.${system};
 
       # A single FHS devshell for all local OpenTitan workflows, built on
       # lowrisc-nix's mkEdaShell. It serves two entry points off the *same*
@@ -136,6 +143,12 @@
           # check-lock-files regenerates python-requirements.txt via `uv pip compile`.
           uv
           pkgs.iproute2
+          # LibreLane synthesis flow: yosys with slang plugin (via nix-eda overlay).
+          # withPlugins is required: bare yosys lacks share/yosys/plugins/slang.so.
+          (llPkgs.yosys.withPlugins [ llPkgs.yosys-slang ])
+          # sv-lang_11 ships the binary as `slang`; this wrapper exposes it as
+          # `slang-elab` so LibreLane scripts find it by the expected name.
+          (pkgs.writeShellScriptBin "slang-elab" ''exec slang "$@"'')
         ];
         # Point the Bazel bindgen toolchain at a nixpkgs libclang (see
         # third_party/rust/extensions.bzl): the LLVM release Bazel would download
