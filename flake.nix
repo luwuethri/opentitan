@@ -37,7 +37,8 @@
     # Provides mkEdaShell (the EDA devshell builder)
     lowrisc-nix.url = "github:lowRISC/lowrisc-nix/ded9720f4960e3da2ffcb7d88dfa5fd51cbe4021";
 
-    # Yosys from cache.nixos.org (do not override).
+    # Yosys and OpenROAD from cache.nixos.org (do not override). Both come from
+    # this one revision, so nixpkgs builds OpenROAD against this exact Yosys.
     nixpkgs-yosys.url = "github:nixos/nixpkgs/nixos-unstable";
     ihp-pdk = {
       url = "github:IHP-GmbH/IHP-Open-PDK/dev";
@@ -162,15 +163,25 @@
         extraPkgs = edaPkgs;
       });
 
+      openroad = nixpkgs-yosys.legacyPackages.${system}.openroad;
+      hasOpenroad = lib.meta.availableOn pkgs.stdenv.hostPlatform openroad;
+
       elab = lowrisc-nix.lib.mkEdaShell (edaShellArgs // {
         name = "opentitan-elab";
-        extraPkgs = edaPkgs;
+        extraPkgs =
+          edaPkgs
+          ++ lib.optional hasOpenroad openroad
+          # Info-ZIP unzip for the OpenROAD checkpoint loader (`unzip -u`);
+          # otherwise a BusyBox unzip without -u is picked up.
+          ++ [pkgs.unzip];
         profile = edaShellArgs.profile + ''
           export IHP_PDK_ROOT=${ihp-pdk}/ihp-sg13cmos5l
         '';
       });
     in {
-      packages.pythonEnv = pythonEnv;
+      packages =
+        {inherit pythonEnv;}
+        // lib.optionalAttrs hasOpenroad {inherit openroad;};
 
       devShells = {
         inherit eda elab;
